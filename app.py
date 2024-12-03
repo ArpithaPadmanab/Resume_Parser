@@ -1,3 +1,4 @@
+import io
 import os
 import re
 import pandas as pd
@@ -94,8 +95,14 @@ if uploaded_files:
 
     # Download the DataFrame as an Excel file
     @st.cache
+    #def convert_df(df):
+     #   return df.to_excel(index=False)
     def convert_df(df):
-        return df.to_excel(index=False)
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+        processed_data = output.getvalue()
+        return processed_data
 
     excel_data = convert_df(df)
     st.download_button("Download Excel", data=excel_data, file_name="Resume_Data.xlsx")
