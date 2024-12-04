@@ -1,6 +1,7 @@
 streamlit
-python-docx
 pandas
-openpyxl
+python-docx
 PyPDF2
-comtypes
+comtypes; platform_system=="Windows"
+fpdf
+openpyxl

@@ -1,62 +1,15 @@
-import io
 import os
 import re
+import io
 import pandas as pd
 from docx import Document
 from PyPDF2 import PdfReader
 import streamlit as st
 
-# Install python-docx and comtypes for handling docx and doc files.
 try:
     import comtypes.client
 except ImportError:
     comtypes = None
-
-# Helper Functions
-
-# Extract text from a PDF file
-def extract_text_from_pdf(pdf_path):
-    text = ""
-    try:
-        reader = PdfReader(pdf_path)
-        for page in reader.pages:
-            text += page.extract_text()
-    except Exception as e:
-        print(f"Error reading PDF {pdf_path}: {e}")
-    return text
-
-# Extract text from a DOCX file
-def extract_text_from_docx(docx_file):
-    text = ""
-    try:
-        if isinstance(docx_file, (str, bytes)):  # File path or bytes
-            doc = Document(docx_file)
-        else:  # File-like object (e.g., from st.file_uploader)
-            doc = Document(docx_file)
-
-        for paragraph in doc.paragraphs:
-            text += paragraph.text + "\n"
-    except Exception as e:
-        print(f"Error reading DOCX file: {e}")
-    return text
-
-# Extract text from a DOC file (requires comtypes)
-def extract_text_from_doc(doc_file):
-    text = ""
-    if not comtypes:
-        print("comtypes is required for reading .doc files.")
-        return text
-
-    try:
-        word = comtypes.client.CreateObject("Word.Application")
-        word.Visible = False
-        doc = word.Documents.Open(doc_file.name)
-        text = doc.Content.Text
-        doc.Close()
-        word.Quit()
-    except Exception as e:
-        print(f"Error reading DOC file: {e}")
-    return text
 
 # Extract relevant information using regex
 def extract_info(text):
@@ -87,7 +40,7 @@ def extract_info(text):
     if education_match:
         info["Education"] = education_match.group(0)
 
-    # Extract skills
+    # Extract skills (simple keyword matching)
     skills_keywords = ["Python", "Java", "SQL", "Machine Learning", "Data Science"]
     skills_found = [skill for skill in skills_keywords if skill.lower() in text.lower()]
     info["Skills"] = ", ".join(skills_found)
@@ -100,42 +53,102 @@ def extract_info(text):
 
     return info
 
-# Streamlit App
-st.title("Resume Parsing Application")
+# Convert DOCX to PDF
+def convert_docx_to_pdf(docx_path, output_path):
+    from fpdf import FPDF
 
-uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx", "doc"], accept_multiple_files=True)
+    try:
+        doc = Document(docx_path)
+        pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=15)
+
+        for paragraph in doc.paragraphs:
+            pdf.add_page()
+            pdf.set_font("Arial", size=12)
+            pdf.multi_cell(0, 10, paragraph.text)
+
+        pdf.output(output_path)
+        return output_path
+    except Exception as e:
+        st.error(f"Error converting DOCX to PDF: {e}")
+        return None
+
+# Convert DOC to PDF
+def convert_doc_to_pdf(doc_path, output_path):
+    if comtypes is None:
+        st.error("comtypes module is required for processing .doc files but is not installed.")
+        return None
+
+    try:
+        word = comtypes.client.CreateObject("Word.Application")
+        doc = word.Documents.Open(doc_path)
+        doc.SaveAs(output_path, FileFormat=17)  # 17 = PDF format
+        doc.Close()
+        word.Quit()
+        return output_path
+    except Exception as e:
+        st.error(f"Error converting DOC to PDF: {e}")
+        return None
+
+# Extract text from PDF
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    try:
+        reader = PdfReader(pdf_path)
+        for page in reader.pages:
+            if page.extract_text():
+                text += page.extract_text()
+    except Exception as e:
+        st.error(f"Error reading PDF {pdf_path}: {e}")
+    return text
+
+# Streamlit UI
+st.title("Resume Parsing with DOC/DOCX to PDF Conversion")
+
+uploaded_files = st.file_uploader("Upload resumes (.pdf, .docx, .doc)", type=["pdf", "docx", "doc"], accept_multiple_files=True)
 
 if uploaded_files:
     data = []
     for uploaded_file in uploaded_files:
         text = ""
-        if uploaded_file.name.endswith(".pdf"):
-            text = extract_text_from_pdf(uploaded_file)
-        elif uploaded_file.name.endswith(".docx"):
-            text = extract_text_from_docx(uploaded_file)
-        elif uploaded_file.name.endswith(".doc"):
-            text = extract_text_from_doc(uploaded_file)
-        else:
-            st.warning(f"Unsupported file type: {uploaded_file.name}")
+        temp_dir = os.getcwd()
+        temp_file_path = os.path.join(temp_dir, uploaded_file.name)
 
+        # Save uploaded file temporarily
+        with open(temp_file_path, "wb") as f:
+            f.write(uploaded_file.getbuffer())
+
+        # Handle file type
+        if uploaded_file.name.endswith(".pdf"):
+            text = extract_text_from_pdf(temp_file_path)
+        elif uploaded_file.name.endswith(".docx"):
+            temp_pdf_path = temp_file_path.replace(".docx", ".pdf")
+            pdf_path = convert_docx_to_pdf(temp_file_path, temp_pdf_path)
+            if pdf_path:
+                text = extract_text_from_pdf(pdf_path)
+        elif uploaded_file.name.endswith(".doc"):
+            temp_pdf_path = temp_file_path.replace(".doc", ".pdf")
+            pdf_path = convert_doc_to_pdf(temp_file_path, temp_pdf_path)
+            if pdf_path:
+                text = extract_text_from_pdf(pdf_path)
+
+        # Extract information
         if text:
             info = extract_info(text)
             info["Filename"] = uploaded_file.name
             data.append(info)
 
     # Display extracted information
-    if data:
-        df = pd.DataFrame(data)
-        st.dataframe(df)
+    df = pd.DataFrame(data)
+    st.dataframe(df)
 
-        # Download the DataFrame as an Excel file
-        @st.cache_data
-        def convert_df(df):
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, index=False, sheet_name='Sheet1')
-            processed_data = output.getvalue()
-            return processed_data
+    # Download as Excel
+    def convert_df_to_excel(df):
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='Resumes')
+        return output.getvalue()
 
-        excel_data = convert_df(df)
-        st.download_button("Download Excel", data=excel_data, file_name="Resume_Data.xlsx")
+    if not df.empty:
+        excel_data = convert_df_to_excel(df)
+        st.download_button("Download Excel", data=excel_data, file_name="Parsed_Resumes.xlsx")
