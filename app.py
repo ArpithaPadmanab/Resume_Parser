@@ -1,35 +1,32 @@
 import io
-import os
 import re
 import pandas as pd
 from docx import Document
 from PyPDF2 import PdfReader
 import streamlit as st
-import pandas as pd
-from docx import Document
-from PyPDF2 import PdfReader
 
-# Helper Functions (use your existing ones here)
+# Helper Functions
 # Extract text from a PDF file
-def extract_text_from_pdf(pdf_path):
+def extract_text_from_pdf(pdf_file):
     text = ""
     try:
-        reader = PdfReader(pdf_path)
+        reader = PdfReader(pdf_file)
         for page in reader.pages:
-            text += page.extract_text()
+            if page.extract_text():
+                text += page.extract_text()
     except Exception as e:
-        print(f"Error reading PDF {pdf_path}: {e}")
+        st.error(f"Error reading PDF file: {e}")
     return text
 
 # Extract text from a Word file
-def extract_text_from_docx(docx_path):
+def extract_text_from_docx(docx_file):
     text = ""
     try:
-        doc = Document(docx_path)
+        doc = Document(docx_file)
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
     except Exception as e:
-        print(f"Error reading DOCX {docx_path}: {e}")
+        st.error(f"Error reading DOCX file: {e}")
     return text
 
 # Extract relevant information using regex
@@ -74,35 +71,47 @@ def extract_info(text):
 
     return info
 
+# Streamlit App
 st.title("Resume Parsing Application")
 
+# File uploader
 uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx"], accept_multiple_files=True)
 
 if uploaded_files:
     data = []
     for uploaded_file in uploaded_files:
+        # Extract text based on file type
         if uploaded_file.name.endswith(".pdf"):
             text = extract_text_from_pdf(uploaded_file)
         elif uploaded_file.name.endswith(".docx"):
             text = extract_text_from_docx(uploaded_file)
+        else:
+            st.warning(f"Unsupported file format: {uploaded_file.name}")
+            continue
 
+        # Extract and store information
         info = extract_info(text)
         info["Filename"] = uploaded_file.name
         data.append(info)
 
+    # Convert extracted data to a DataFrame
     df = pd.DataFrame(data)
     st.dataframe(df)
 
-    # Download the DataFrame as an Excel file
-    @st.cache
-    #def convert_df(df):
-     #   return df.to_excel(index=False)
-    def convert_df(df):
+    # Convert DataFrame to Excel for download
+    @st.cache_data
+    def convert_df_to_excel(dataframe):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name='Sheet1')
-        processed_data = output.getvalue()
-        return processed_data
+            dataframe.to_excel(writer, index=False, sheet_name="ParsedData")
+        return output.getvalue()
 
-    excel_data = convert_df(df)
-    st.download_button("Download Excel", data=excel_data, file_name="Resume_Data.xlsx")
+    # Add download button
+    if not df.empty:
+        excel_data = convert_df_to_excel(df)
+        st.download_button(
+            label="Download Excel File",
+            data=excel_data,
+            file_name="Resume_Data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
