@@ -80,38 +80,25 @@ uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx"], accept
 if uploaded_files:
     data = []
     for uploaded_file in uploaded_files:
-        # Extract text based on file type
         if uploaded_file.name.endswith(".pdf"):
             text = extract_text_from_pdf(uploaded_file)
         elif uploaded_file.name.endswith(".docx"):
             text = extract_text_from_docx(uploaded_file)
-        else:
-            st.warning(f"Unsupported file format: {uploaded_file.name}")
-            continue
 
-        # Extract and store information
         info = extract_info(text)
         info["Filename"] = uploaded_file.name
         data.append(info)
 
-    # Convert extracted data to a DataFrame
     df = pd.DataFrame(data)
     st.dataframe(df)
 
-    # Convert DataFrame to Excel for download
-    @st.cache_data
-    def convert_df_to_excel(dataframe):
+    # Fixing the convert_df function
+    def convert_df(df):
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            dataframe.to_excel(writer, index=False, sheet_name="ParsedData")
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Sheet1")
+        output.seek(0)  # Move the pointer to the start of the buffer
         return output.getvalue()
 
-    # Add download button
-    if not df.empty:
-        excel_data = convert_df_to_excel(df)
-        st.download_button(
-            label="Download Excel File",
-            data=excel_data,
-            file_name="Resume_Data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        )
+    excel_data = convert_df(df)
+    st.download_button("Download Excel", data=excel_data, file_name="Resume_Data.xlsx")
