@@ -1,7 +1,7 @@
 streamlit
-pandas
 python-docx
+reportlab
 PyPDF2
-comtypes; platform_system=="Windows"
-fpdf
+pandas
 openpyxl
+pywin32; platform_system == "Windows"
