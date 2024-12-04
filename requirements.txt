@@ -1,7 +1,7 @@
 streamlit
+pandas
 python-docx
+pypandoc
 reportlab
 PyPDF2
-pandas
 openpyxl
-pywin32; platform_system == "Windows"

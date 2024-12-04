@@ -1,55 +1,25 @@
 import io
 import os
 import re
-import tempfile
+import pypandoc
+import pandas as pd
 from docx import Document
 from PyPDF2 import PdfReader
-from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
 import streamlit as st
-import pandas as pd
-import pythoncom
-from win32com import client
 
-# Convert DOC to PDF
-def convert_doc_to_pdf(doc_path, output_path):
+
+# Helper Functions
+# Convert DOC or DOCX to PDF
+def convert_doc_to_pdf(input_path, output_path):
     try:
-        pythoncom.CoInitialize()  # Ensure COM library is initialized
-        word = client.Dispatch("Word.Application")
-        doc = word.Documents.Open(doc_path)
-        doc.SaveAs(output_path, FileFormat=17)  # 17 corresponds to wdFormatPDF
-        doc.Close()
-        word.Quit()
-        return output_path
+        pypandoc.convert_file(input_path, 'pdf', outputfile=output_path)
+        return True
     except Exception as e:
-        raise Exception(f"Error converting DOC to PDF: {e}")
+        print(f"Error converting {input_path} to PDF: {e}")
+        return False
 
-# Convert DOCX to PDF with Unicode support
-def convert_docx_to_pdf(docx_path, output_path):
-    try:
-        doc = Document(docx_path)
-        pdf_canvas = canvas.Canvas(output_path, pagesize=letter)
-        width, height = letter
-        margin = 72
-        y_position = height - margin
-
-        pdf_canvas.setFont("Helvetica", 12)
-        for paragraph in doc.paragraphs:
-            text = paragraph.text
-            if text.strip():
-                lines = pdf_canvas.beginText(margin, y_position)
-                lines.setTextOrigin(margin, y_position)
-                lines.textLines(text)
-                pdf_canvas.drawText(lines)
-                y_position -= 20
-                if y_position < margin:
-                    pdf_canvas.showPage()
-                    y_position = height - margin
-
-        pdf_canvas.save()
-        return output_path
-    except Exception as e:
-        raise Exception(f"Error converting DOCX to PDF: {e}")
 
 # Extract text from PDF
 def extract_text_from_pdf(pdf_path):
@@ -57,12 +27,35 @@ def extract_text_from_pdf(pdf_path):
     try:
         reader = PdfReader(pdf_path)
         for page in reader.pages:
-            text += page.extract_text()
+            text += page.extract_text() or ""
     except Exception as e:
-        raise Exception(f"Error reading PDF: {e}")
+        print(f"Error reading PDF {pdf_path}: {e}")
     return text
 
-# Extract information using regex
+
+# Extract text from DOCX
+def extract_text_from_docx(docx_path):
+    text = ""
+    try:
+        doc = Document(docx_path)
+        for paragraph in doc.paragraphs:
+            text += paragraph.text + "\n"
+    except Exception as e:
+        print(f"Error reading DOCX {docx_path}: {e}")
+    return text
+
+
+# Extract text from DOC
+def extract_text_from_doc(doc_path):
+    temp_pdf = "temp_output.pdf"
+    if convert_doc_to_pdf(doc_path, temp_pdf):
+        text = extract_text_from_pdf(temp_pdf)
+        os.remove(temp_pdf)  # Clean up temporary file
+        return text
+    return ""
+
+
+# Extract relevant information using regex
 def extract_info(text):
     info = {
         "Name": None,
@@ -72,13 +65,6 @@ def extract_info(text):
         "Skills": None,
         "Experience": None,
     }
-
-    # Extract name (assumes name is the first line or near the top)
-    lines = text.split("\n")
-    for line in lines:
-        if len(line.split()) > 1:  # Likely a name
-            info["Name"] = line.strip()
-            break
 
     # Extract email
     email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
@@ -92,18 +78,23 @@ def extract_info(text):
     if phone_match:
         info["Phone"] = phone_match.group(0)
 
-    # Extract education
+    # Extract name (first line heuristic)
+    lines = text.split("\n")
+    if lines:
+        info["Name"] = lines[0].strip()
+
+    # Extract education (sample pattern)
     education_pattern = r"(B\.Tech|B\.Sc|M\.Tech|M\.Sc|PhD|MBA)"
     education_match = re.search(education_pattern, text, re.IGNORECASE)
     if education_match:
         info["Education"] = education_match.group(0)
 
-    # Extract skills
+    # Extract skills (simple keyword matching)
     skills_keywords = ["Python", "Java", "SQL", "Machine Learning", "Data Science"]
     skills_found = [skill for skill in skills_keywords if skill.lower() in text.lower()]
     info["Skills"] = ", ".join(skills_found)
 
-    # Extract experience
+    # Extract experience (sample pattern)
     experience_pattern = r"(\d+ years? experience)"
     experience_match = re.search(experience_pattern, text, re.IGNORECASE)
     if experience_match:
@@ -111,47 +102,45 @@ def extract_info(text):
 
     return info
 
-# Streamlit app
+
+# Streamlit App
 st.title("Resume Parsing Application")
 
-uploaded_files = st.file_uploader("Upload resumes (PDF, DOCX, DOC)", type=["pdf", "docx", "doc"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx", "doc"], accept_multiple_files=True)
 
 if uploaded_files:
     data = []
     for uploaded_file in uploaded_files:
-        with tempfile.NamedTemporaryFile(delete=False, suffix=f".{uploaded_file.name.split('.')[-1]}") as temp_file:
-            temp_file.write(uploaded_file.read())
-            temp_file_path = temp_file.name
+        text = ""
 
-        try:
-            if uploaded_file.name.endswith(".pdf"):
-                text = extract_text_from_pdf(temp_file_path)
-            elif uploaded_file.name.endswith(".docx"):
-                pdf_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
-                convert_docx_to_pdf(temp_file_path, pdf_path)
-                text = extract_text_from_pdf(pdf_path)
-            elif uploaded_file.name.endswith(".doc"):
-                pdf_path = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf").name
-                convert_doc_to_pdf(temp_file_path, pdf_path)
-                text = extract_text_from_pdf(pdf_path)
+        # Handle different file types
+        if uploaded_file.name.endswith(".pdf"):
+            text = extract_text_from_pdf(uploaded_file)
+        elif uploaded_file.name.endswith(".docx"):
+            text = extract_text_from_docx(uploaded_file)
+        elif uploaded_file.name.endswith(".doc"):
+            # Save uploaded file to disk for conversion
+            temp_doc_path = f"temp_{uploaded_file.name}"
+            with open(temp_doc_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            text = extract_text_from_doc(temp_doc_path)
+            os.remove(temp_doc_path)
 
-            info = extract_info(text)
-            info["Filename"] = uploaded_file.name
-            data.append(info)
-        except Exception as e:
-            st.error(f"Error processing {uploaded_file.name}: {e}")
+        # Extract info and append to data
+        info = extract_info(text)
+        info["Filename"] = uploaded_file.name
+        data.append(info)
 
+    # Display results in a DataFrame
     df = pd.DataFrame(data)
     st.dataframe(df)
 
-    # Download the DataFrame as an Excel file
-    @st.cache_data
-    def convert_df_to_excel(dataframe):
+    # Provide download option
+    def convert_df(df):
         output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            dataframe.to_excel(writer, index=False, sheet_name='Resumes')
+        with pd.ExcelWriter(output, engine="openpyxl") as writer:
+            df.to_excel(writer, index=False, sheet_name="Resumes")
         return output.getvalue()
 
-    if not df.empty:
-        excel_data = convert_df_to_excel(df)
-        st.download_button("Download Excel", data=excel_data, file_name="Resume_Data.xlsx")
+    excel_data = convert_df(df)
+    st.download_button("Download Excel", data=excel_data, file_name="Resume_Data.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
