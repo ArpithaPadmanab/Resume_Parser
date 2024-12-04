@@ -1,6 +1,6 @@
-streamlit==1.26.0
-python-docx==0.8.11
-pandas==2.1.1
-openpyxl==3.1.2
-PyPDF2==3.0.1
-comtypes==1.1.11
+streamlit
+python-docx
+pandas
+openpyxl
+PyPDF2
+comtypes
