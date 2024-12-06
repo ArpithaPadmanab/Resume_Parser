@@ -5,48 +5,45 @@ import pypandoc
 import pandas as pd
 from docx import Document
 from PyPDF2 import PdfReader
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
 import streamlit as st
 
-
 # Helper Functions
-# Convert DOC or DOCX to PDF
-def convert_doc_to_pdf(input_path, output_path):
-    try:
-        pypandoc.convert_file(input_path, 'pdf', outputfile=output_path)
-        return True
-    except Exception as e:
-        print(f"Error converting {input_path} to PDF: {e}")
-        return False
-
-
-# Extract text from PDF
 def extract_text_from_pdf(pdf_path):
+    """Extract text from PDF file."""
     text = ""
     try:
         reader = PdfReader(pdf_path)
         for page in reader.pages:
             text += page.extract_text() or ""
     except Exception as e:
-        print(f"Error reading PDF {pdf_path}: {e}")
+        st.error(f"Error reading PDF {pdf_path}: {e}")
     return text
 
 
-# Extract text from DOCX
 def extract_text_from_docx(docx_path):
+    """Extract text from DOCX file."""
     text = ""
     try:
         doc = Document(docx_path)
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
     except Exception as e:
-        print(f"Error reading DOCX {docx_path}: {e}")
+        st.error(f"Error reading DOCX {docx_path}: {e}")
     return text
 
 
-# Extract text from DOC
+def convert_doc_to_pdf(input_path, output_path):
+    """Convert DOC file to PDF."""
+    try:
+        pypandoc.convert_file(input_path, 'pdf', outputfile=output_path)
+        return True
+    except Exception as e:
+        st.error(f"Error converting DOC to PDF: {e}")
+        return False
+
+
 def extract_text_from_doc(doc_path):
+    """Extract text from DOC file by converting to PDF."""
     temp_pdf = "temp_output.pdf"
     if convert_doc_to_pdf(doc_path, temp_pdf):
         text = extract_text_from_pdf(temp_pdf)
@@ -55,8 +52,8 @@ def extract_text_from_doc(doc_path):
     return ""
 
 
-# Extract relevant information using regex
 def extract_info(text):
+    """Extract relevant information from the text."""
     info = {
         "Name": None,
         "Email": None,
@@ -73,7 +70,7 @@ def extract_info(text):
         info["Email"] = email_match.group(0)
 
     # Extract phone number
-    phone_pattern = r'\b\d{10}\b'
+    phone_pattern = r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'
     phone_match = re.search(phone_pattern, text)
     if phone_match:
         info["Phone"] = phone_match.group(0)
@@ -117,19 +114,25 @@ if uploaded_files:
         if uploaded_file.name.endswith(".pdf"):
             text = extract_text_from_pdf(uploaded_file)
         elif uploaded_file.name.endswith(".docx"):
-            text = extract_text_from_docx(uploaded_file)
-        elif uploaded_file.name.endswith(".doc"):
-            # Save uploaded file to disk for conversion
-            temp_doc_path = f"temp_{uploaded_file.name}"
-            with open(temp_doc_path, "wb") as f:
+            temp_path = f"temp_{uploaded_file.name}"
+            with open(temp_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
-            text = extract_text_from_doc(temp_doc_path)
-            os.remove(temp_doc_path)
+            text = extract_text_from_docx(temp_path)
+            os.remove(temp_path)  # Clean up temporary file
+        elif uploaded_file.name.endswith(".doc"):
+            temp_path = f"temp_{uploaded_file.name}"
+            with open(temp_path, "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            text = extract_text_from_doc(temp_path)
+            os.remove(temp_path)  # Clean up temporary file
 
         # Extract info and append to data
-        info = extract_info(text)
-        info["Filename"] = uploaded_file.name
-        data.append(info)
+        if text:
+            info = extract_info(text)
+            info["Filename"] = uploaded_file.name
+            data.append(info)
+        else:
+            st.warning(f"Could not process file: {uploaded_file.name}")
 
     # Display results in a DataFrame
     df = pd.DataFrame(data)
@@ -142,5 +145,6 @@ if uploaded_files:
             df.to_excel(writer, index=False, sheet_name="Resumes")
         return output.getvalue()
 
-    excel_data = convert_df(df)
-    st.download_button("Download Excel", data=excel_data, file_name="Resume_Data.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    if not df.empty:
+        excel_data = convert_df(df)
+        st.download_button("Download Excel", data=excel_data, file_name="Resume_Data.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
