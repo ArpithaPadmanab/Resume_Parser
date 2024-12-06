@@ -7,53 +7,53 @@ from docx import Document
 from PyPDF2 import PdfReader
 import streamlit as st
 
-# Helper Functions
+# Debugging utility
+def log_debug_info(step, content):
+    st.text(f"DEBUG - {step}: {content[:500]}")  # Display the first 500 characters
+
+# Extract text from PDF file
 def extract_text_from_pdf(pdf_path):
-    """Extract text from PDF file."""
     text = ""
     try:
         reader = PdfReader(pdf_path)
         for page in reader.pages:
             text += page.extract_text() or ""
     except Exception as e:
-        st.error(f"Error reading PDF {pdf_path}: {e}")
+        st.error(f"Error reading PDF: {e}")
     return text
 
-
+# Extract text from DOCX file
 def extract_text_from_docx(docx_path):
-    """Extract text from DOCX file."""
     text = ""
     try:
         doc = Document(docx_path)
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
+        log_debug_info("DOCX Extracted Text", text)
     except Exception as e:
-        st.error(f"Error reading DOCX {docx_path}: {e}")
+        st.error(f"Error reading DOCX: {e}")
     return text
 
-
+# Convert DOC to PDF
 def convert_doc_to_pdf(input_path, output_path):
-    """Convert DOC file to PDF."""
     try:
-        pypandoc.convert_file(input_path, 'pdf', outputfile=output_path)
+        pypandoc.convert_file(input_path, "pdf", outputfile=output_path)
         return True
     except Exception as e:
         st.error(f"Error converting DOC to PDF: {e}")
         return False
 
-
+# Extract text from DOC file
 def extract_text_from_doc(doc_path):
-    """Extract text from DOC file by converting to PDF."""
     temp_pdf = "temp_output.pdf"
     if convert_doc_to_pdf(doc_path, temp_pdf):
         text = extract_text_from_pdf(temp_pdf)
-        os.remove(temp_pdf)  # Clean up temporary file
+        os.remove(temp_pdf)  # Clean up
         return text
     return ""
 
-
+# Extract information using regex
 def extract_info(text):
-    """Extract relevant information from the text."""
     info = {
         "Name": None,
         "Email": None,
@@ -62,6 +62,9 @@ def extract_info(text):
         "Skills": None,
         "Experience": None,
     }
+
+    # Debug extracted text
+    log_debug_info("Extract Info Input Text", text)
 
     # Extract email
     email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
@@ -80,25 +83,24 @@ def extract_info(text):
     if lines:
         info["Name"] = lines[0].strip()
 
-    # Extract education (sample pattern)
+    # Extract education
     education_pattern = r"(B\.Tech|B\.Sc|M\.Tech|M\.Sc|PhD|MBA)"
     education_match = re.search(education_pattern, text, re.IGNORECASE)
     if education_match:
         info["Education"] = education_match.group(0)
 
-    # Extract skills (simple keyword matching)
+    # Extract skills
     skills_keywords = ["Python", "Java", "SQL", "Machine Learning", "Data Science"]
     skills_found = [skill for skill in skills_keywords if skill.lower() in text.lower()]
     info["Skills"] = ", ".join(skills_found)
 
-    # Extract experience (sample pattern)
+    # Extract experience
     experience_pattern = r"(\d+ years? experience)"
     experience_match = re.search(experience_pattern, text, re.IGNORECASE)
     if experience_match:
         info["Experience"] = experience_match.group(0)
 
     return info
-
 
 # Streamlit App
 st.title("Resume Parsing Application")
@@ -118,15 +120,14 @@ if uploaded_files:
             with open(temp_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
             text = extract_text_from_docx(temp_path)
-            os.remove(temp_path)  # Clean up temporary file
+            os.remove(temp_path)
         elif uploaded_file.name.endswith(".doc"):
             temp_path = f"temp_{uploaded_file.name}"
             with open(temp_path, "wb") as f:
                 f.write(uploaded_file.getbuffer())
             text = extract_text_from_doc(temp_path)
-            os.remove(temp_path)  # Clean up temporary file
+            os.remove(temp_path)
 
-        # Extract info and append to data
         if text:
             info = extract_info(text)
             info["Filename"] = uploaded_file.name
@@ -134,11 +135,9 @@ if uploaded_files:
         else:
             st.warning(f"Could not process file: {uploaded_file.name}")
 
-    # Display results in a DataFrame
     df = pd.DataFrame(data)
     st.dataframe(df)
 
-    # Provide download option
     def convert_df(df):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -147,4 +146,9 @@ if uploaded_files:
 
     if not df.empty:
         excel_data = convert_df(df)
-        st.download_button("Download Excel", data=excel_data, file_name="Resume_Data.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        st.download_button(
+            "Download Excel",
+            data=excel_data,
+            file_name="Resume_Data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
