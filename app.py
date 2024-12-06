@@ -7,10 +7,6 @@ from docx import Document
 from PyPDF2 import PdfReader
 import streamlit as st
 
-# Debugging utility
-def log_debug_info(step, content):
-    st.text(f"DEBUG - {step}: {content[:500]}")  # Display the first 500 characters
-
 # Extract text from PDF file
 def extract_text_from_pdf(pdf_path):
     text = ""
@@ -22,14 +18,21 @@ def extract_text_from_pdf(pdf_path):
         st.error(f"Error reading PDF: {e}")
     return text
 
-# Extract text from DOCX file
+# Extract text from DOCX file (including tables)
 def extract_text_from_docx(docx_path):
     text = ""
     try:
         doc = Document(docx_path)
+        # Extract paragraphs
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
-        log_debug_info("DOCX Extracted Text", text)
+        
+        # Extract table content
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    text += cell.text + " "
+            text += "\n"  # Separate rows
     except Exception as e:
         st.error(f"Error reading DOCX: {e}")
     return text
@@ -62,9 +65,6 @@ def extract_info(text):
         "Skills": None,
         "Experience": None,
     }
-
-    # Debug extracted text
-    log_debug_info("Extract Info Input Text", text)
 
     # Extract email
     email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
