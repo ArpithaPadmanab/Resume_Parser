@@ -103,7 +103,12 @@ def extract_info(text):
     return info
 
 # Streamlit App
-st.title("Resume Parsing Application")
+st.title("AIDEAS – RESUME TRACKER")
+
+st.image(
+    "C:\Users\india\OneDrive\Desktop\Resume parasing\logo.jpeg",  # Replace with the path to your image
+    use_column_width=True  # Adjusts the image size to the width of the column
+)
 
 uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx", "doc"], accept_multiple_files=True)
 
