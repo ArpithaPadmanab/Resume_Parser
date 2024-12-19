@@ -104,7 +104,7 @@ def extract_info(text):
 
 # Streamlit App
 
-st.title(st.image( "logo.jpeg" ),"RESUME TRACKER")
+st.title(st.image( "logo.jpeg" )+"RESUME TRACKER")
 
 
 
