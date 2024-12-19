@@ -106,7 +106,7 @@ def extract_info(text):
 st.title("AIDEAS – RESUME TRACKER")
 
 st.image(
-    "C:\Users\india\OneDrive\Desktop\Resume parasing\logo.jpeg",  # Replace with the path to your image
+    "logo.jpeg",  # Replace with the path to your image
     use_column_width=True  # Adjusts the image size to the width of the column
 )
 
