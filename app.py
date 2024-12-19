@@ -115,13 +115,7 @@ with col1:
 
 # Add text in the second column
 with col2:
-   st.markdown(
-        """
-        <div style="display: flex; justify-content: center; align-items: center; height: 100%; text-align: center;">
-            <h3>This is the heading</h3>
-            <p>This is some descriptive text that is vertically and horizontally centered.</p>
-        </div>
-        """)
+   
    st.title("RESUME TRACKER")
 
 
