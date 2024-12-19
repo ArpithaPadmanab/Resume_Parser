@@ -103,10 +103,8 @@ def extract_info(text):
     return info
 
 # Streamlit App
-st.image(
-    "logo.jpeg" 
-)
-st.title("AIDEAS – RESUME TRACKER")
+
+st.title(st.image( "logo.jpeg" ),"RESUME TRACKER")
 
 
 
