@@ -104,8 +104,18 @@ def extract_info(text):
 
 # Streamlit App
 
-st.title(st.image( "logo.jpeg" )+"RESUME TRACKER")
 
+col1, col2 = st.columns([1, 2])  # Adjust the width ratio if needed
+
+# Add an image in the first column
+with col1:
+    st.image(
+        "logo.jpeg"
+    )
+
+# Add text in the second column
+with col2:
+   st.title("RESUME TRACKER")
 
 
 uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx", "doc"], accept_multiple_files=True)
