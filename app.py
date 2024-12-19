@@ -103,12 +103,12 @@ def extract_info(text):
     return info
 
 # Streamlit App
+st.image(
+    "logo.jpeg" 
+)
 st.title("AIDEAS – RESUME TRACKER")
 
-st.image(
-    "logo.jpeg",  # Replace with the path to your image
-    use_column_width=True  # Adjusts the image size to the width of the column
-)
+
 
 uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx", "doc"], accept_multiple_files=True)
 
