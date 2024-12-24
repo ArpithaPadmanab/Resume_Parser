@@ -5,4 +5,3 @@ pypandoc
 reportlab
 PyPDF2
 openpyxl
-pydrive
