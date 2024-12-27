@@ -91,7 +91,7 @@ def extract_info(text):
         info["Education"] = education_match.group(0)
 
     # Extract skills
-    skills_keywords = ["C++","C",".NET","Python", "Java", "SQL", "Machine Learning", "Data Science","Tableau","PowerBI","PLC","DCS","SCADA","AutoCAD","P2P","O2C","SCM","MM","SAP","Robo","BiW","Solid Works","Mechanical Design","Electrical Design","E Plan","LV","MV","LT","MT","EBASE","800xA" ]
+    skills_keywords = ["C++", "C", ".NET", "Python", "Java", "SQL", "Machine Learning", "Data Science", "Tableau", "PowerBI", "PLC", "DCS", "SCADA", "AutoCAD", "P2P", "O2C", "SCM", "MM", "SAP", "Robo", "BiW", "Solid Works", "Mechanical Design", "Electrical Design", "E Plan", "LV", "MV", "LT", "MT", "EBASE", "800xA" ]
     skills_found = [skill for skill in skills_keywords if skill.lower() in text.lower()]
     info["Skills"] = ", ".join(skills_found)
 
