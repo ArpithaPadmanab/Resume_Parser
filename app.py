@@ -6,24 +6,6 @@ from docx import Document
 from PyPDF2 import PdfReader
 import streamlit as st
 from openpyxl import Workbook
-import subprocess
-from dotenv import load_dotenv
-load_dotenv()
-
-repo_url = os.getenv("GITHUB_REPO_URL")
-github_token = os.getenv("GITHUB_TOKEN")
-
-# Clone private repository (if needed)
-def clone_private_repo():
-    # Get repository URL and token from environment variables
-    # Check if the repository is already cloned
-    if not os.path.exists(repo_name):
-        clone_command = f"git clone https://{token}@{repo_url}"
-        result = subprocess.run(clone_command, shell=True)
-        if result.returncode != 0:
-            st.error("Failed to clone the private repository.")
-            return False
-    return True
 
 # Extract text from PDF
 def extract_text_from_pdf(pdf_path):
