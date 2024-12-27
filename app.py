@@ -64,6 +64,7 @@ def extract_info(text):
         "Education": None,
         "Skills": None,
         "Experience": None,
+        "Position": None,
     }
 
     # Extract email
@@ -84,13 +85,13 @@ def extract_info(text):
         info["Name"] = lines[0].strip()
 
     # Extract education
-    education_pattern = r"(B\.Tech|B\.Sc|M\.Tech|M\.Sc|PhD|MBA)"
+    education_pattern = r"(B\.E|B\.Tech|B\.Sc|B\.Com|M\.Tech|M\.Sc|PhD|MBA)"
     education_match = re.search(education_pattern, text, re.IGNORECASE)
     if education_match:
         info["Education"] = education_match.group(0)
 
     # Extract skills
-    skills_keywords = ["Python", "Java", "SQL", "Machine Learning", "Data Science"]
+    skills_keywords = ["C++","C",".NET","Python", "Java", "SQL", "Machine Learning", "Data Science","Tableau","PowerBI","PLC","DCS","SCADA","AutoCAD","P2P","O2C","SCM","MM","SAP","Robo","BiW","Solid Works","Mechanical Design","Electrical Design","E Plan","LV","MV","LT","MT","EBASE","800xA" ]
     skills_found = [skill for skill in skills_keywords if skill.lower() in text.lower()]
     info["Skills"] = ", ".join(skills_found)
 
