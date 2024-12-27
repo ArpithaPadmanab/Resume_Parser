@@ -104,9 +104,6 @@ def extract_info(text):
 # Streamlit App
 st.set_page_config(page_title="Resume Tracker", layout="wide")
 
-if clone_private_repo():  # Clone repository if not already cloned
-    st.success("Private repository accessed successfully.")
-
 col1, col2 = st.columns([1, 2])
 
 # Add image
