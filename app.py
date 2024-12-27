@@ -74,7 +74,7 @@ def extract_info(text):
         "C++", "C", ".NET", "Python", "Java", "SQL", "Machine Learning", "Data Science",
         "Tableau", "PowerBI", "PLC", "DCS", "SCADA", "AutoCAD", "P2P", "O2C", "SCM", "MM",
         "SAP", "Robo", "BiW", "SolidWorks", "Mechanical Design", "Electrical Design", "E Plan",
-        "LV", "MV", "LT", "MT", "EBASE", "800xA"
+        "LV", "MV", "LT", "MT", "EBASE", "800xA", "B.Com"
     ]
     skills_found = [skill for skill in skills_keywords if skill.lower() in text.lower()]
     info["Skills"] = ", ".join(skills_found)
@@ -87,11 +87,20 @@ def extract_info(text):
 
     # Assign position
     position_keywords = {
+        "Finance": ["B.Com"],
+        "Purchase Engineer": ["SCM", "SAP", "MM"],
+        "Order Mangement Associate": ["B.Com", "SAP"],
+        "Data Analytics": ["Machine Learning", "Data Science", "SQL", "Tableau", "PowerBI"],
         "Software Engineer": ["Python", "Java", "C++", ".NET"],
-        "Data Scientist": ["Machine Learning", "Data Science", "SQL", "Tableau", "PowerBI"],
-        "Mechanical Engineer": ["AutoCAD", "SolidWorks", "Mechanical Design"],
-        "Electrical Engineer": ["Electrical Design", "E Plan", "LV", "MV", "800xA"],
-        "SAP Consultant": ["SAP", "P2P", "O2C", "SCM", "MM"],
+        "800xA": ["800xA"],
+        "SAP Consultant": ["SAP", "LV", "MV", "LT", "MT"],
+        "Electrical Engineer": ["Electrical Design", "E Plan", "EBASE"],
+        "Mechanical Design":  ["SolidWorks", "Mechanical Design"],
+        "Automation Engineer": ["PLC","DCS", "SCADA"],
+        "AutoCAD": ["AutoCAD"],
+        "Sales Support Engineer": ["P2P", "O2C"],
+        "Robotics Programmer": ["Robo"],
+        "BiW": ["BiW"],    
     }
 
     for position, keywords in position_keywords.items():
