@@ -2,6 +2,7 @@ import io
 import os
 import re
 import pypandoc
+from pypandoc import pandoc
 import pandas as pd
 from docx import Document
 from PyPDF2 import PdfReader
@@ -100,6 +101,12 @@ def extract_info(text):
     experience_match = re.search(experience_pattern, text, re.IGNORECASE)
     if experience_match:
         info["Experience"] = experience_match.group(0)
+
+    return info
+
+    for skill in skills_found:
+        if skill == "Java":
+            info["Position"] = "Software"
 
     return info
 
