@@ -7,18 +7,15 @@ from PyPDF2 import PdfReader
 import streamlit as st
 from openpyxl import Workbook
 import subprocess
+from dotenv import load_dotenv
+load_dotenv()
+
+repo_url = os.getenv("GITHUB_REPO_URL")
+github_token = os.getenv("GITHUB_TOKEN")
 
 # Clone private repository (if needed)
 def clone_private_repo():
     # Get repository URL and token from environment variables
-    token = os.getenv("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")
-    repo_url = os.getenv("https://github.com/ArpithaPadmanab/Resume_Parser.git")  
-    repo_name = repo_url.split("/")[-1].replace(".git", "")
-
-    if not token or not repo_url:
-        st.error("GITHUB_TOKEN and GITHUB_REPO_URL must be set as environment variables.")
-        return False
-
     # Check if the repository is already cloned
     if not os.path.exists(repo_name):
         clone_command = f"git clone https://{token}@{repo_url}"
