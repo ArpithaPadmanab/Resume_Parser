@@ -1,15 +1,34 @@
-import io
 import os
+import io
 import re
-import pypandoc
-from pypandoc import pandoc
 import pandas as pd
 from docx import Document
 from PyPDF2 import PdfReader
 import streamlit as st
 from openpyxl import Workbook
+import subprocess
 
-# Extract text from PDF file
+# Clone private repository (if needed)
+def clone_private_repo():
+    # Get repository URL and token from environment variables
+    token = os.getenv("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")
+    repo_url = os.getenv("https://github.com/ArpithaPadmanab/Resume_Parser.git")  
+    repo_name = repo_url.split("/")[-1].replace(".git", "")
+
+    if not token or not repo_url:
+        st.error("GITHUB_TOKEN and GITHUB_REPO_URL must be set as environment variables.")
+        return False
+
+    # Check if the repository is already cloned
+    if not os.path.exists(repo_name):
+        clone_command = f"git clone https://{token}@{repo_url}"
+        result = subprocess.run(clone_command, shell=True)
+        if result.returncode != 0:
+            st.error("Failed to clone the private repository.")
+            return False
+    return True
+
+# Extract text from PDF
 def extract_text_from_pdf(pdf_path):
     text = ""
     try:
@@ -20,44 +39,23 @@ def extract_text_from_pdf(pdf_path):
         st.error(f"Error reading PDF: {e}")
     return text
 
-# Extract text from DOCX file (including tables)
+# Extract text from DOCX
 def extract_text_from_docx(docx_path):
     text = ""
     try:
         doc = Document(docx_path)
-        # Extract paragraphs
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
-
-        # Extract table content
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     text += cell.text + " "
-            text += "\n"  # Separate rows
+            text += "\n"
     except Exception as e:
         st.error(f"Error reading DOCX: {e}")
     return text
 
-# Convert DOC to PDF
-def convert_doc_to_pdf(input_path, output_path):
-    try:
-        pypandoc.convert_file(input_path, "pdf", outputfile=output_path)
-        return True
-    except Exception as e:
-        st.error(f"Error converting DOC to PDF: {e}")
-        return False
-
-# Extract text from DOC file
-def extract_text_from_doc(doc_path):
-    temp_pdf = "temp_output.pdf"
-    if convert_doc_to_pdf(doc_path, temp_pdf):
-        text = extract_text_from_pdf(temp_pdf)
-        os.remove(temp_pdf)  # Clean up
-        return text
-    return ""
-
-# Extract information using regex
+# Extract information
 def extract_info(text):
     info = {
         "Name": None,
@@ -66,7 +64,7 @@ def extract_info(text):
         "Education": None,
         "Skills": None,
         "Experience": None,
-        "Position": None,  # New column for position
+        "Position": None,
     }
 
     # Extract email
@@ -75,13 +73,13 @@ def extract_info(text):
     if email_match:
         info["Email"] = email_match.group(0)
 
-    # Extract phone number
+    # Extract phone
     phone_pattern = r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'
     phone_match = re.search(phone_pattern, text)
     if phone_match:
         info["Phone"] = phone_match.group(0)
 
-    # Extract name (first line heuristic)
+    # Extract name
     lines = text.split("\n")
     if lines:
         info["Name"] = lines[0].strip()
@@ -108,7 +106,7 @@ def extract_info(text):
     if experience_match:
         info["Experience"] = experience_match.group(0)
 
-    # Determine position based on keywords
+    # Assign position
     position_keywords = {
         "Software Engineer": ["Python", "Java", "C++", ".NET"],
         "Data Scientist": ["Machine Learning", "Data Science", "SQL", "Tableau", "PowerBI"],
@@ -127,42 +125,32 @@ def extract_info(text):
 # Streamlit App
 st.set_page_config(page_title="Resume Tracker", layout="wide")
 
-col1, col2 = st.columns([1, 2])  # Adjust the width ratio if needed
+if clone_private_repo():  # Clone repository if not already cloned
+    st.success("Private repository accessed successfully.")
 
-# Add an image in the first column
+col1, col2 = st.columns([1, 2])
+
+# Add image
 with col1:
-    try:
-        st.image("logo.jpeg", use_column_width=True)
-    except FileNotFoundError:
-        st.write("Logo not found. Please ensure 'logo.jpeg' is in the app directory.")
+    st.image("logo.jpeg", use_column_width=True)
 
-# Add text in the second column
+# Add title
 with col2:
     st.title("Resume Tracker")
 
-uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx", "doc"], accept_multiple_files=True)
+uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx"], accept_multiple_files=True)
 
 if uploaded_files:
     data = []
-    progress = st.progress(0)
-    for idx, uploaded_file in enumerate(uploaded_files):
+    for uploaded_file in uploaded_files:
         text = ""
-
-        # Handle different file types
         if uploaded_file.name.endswith(".pdf"):
             text = extract_text_from_pdf(uploaded_file)
         elif uploaded_file.name.endswith(".docx"):
-            temp_path = f"temp_{uploaded_file.name}"
-            with open(temp_path, "wb") as f:
+            with open(f"temp_{uploaded_file.name}", "wb") as f:
                 f.write(uploaded_file.getbuffer())
-            text = extract_text_from_docx(temp_path)
-            os.remove(temp_path)
-        elif uploaded_file.name.endswith(".doc"):
-            temp_path = f"temp_{uploaded_file.name}"
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            text = extract_text_from_doc(temp_path)
-            os.remove(temp_path)
+            text = extract_text_from_docx(f"temp_{uploaded_file.name}")
+            os.remove(f"temp_{uploaded_file.name}")
 
         if text:
             info = extract_info(text)
@@ -170,8 +158,6 @@ if uploaded_files:
             data.append(info)
         else:
             st.warning(f"Could not process file: {uploaded_file.name}")
-
-        progress.progress((idx + 1) / len(uploaded_files))
 
     df = pd.DataFrame(data)
     st.dataframe(df)
