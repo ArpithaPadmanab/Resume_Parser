@@ -108,7 +108,7 @@ col1, col2 = st.columns([1, 2])
 
 # Add image
 with col1:
-    st.image("logo.jpeg", use_column_width=True)
+    st.image("logo.jpeg")
 
 # Add title
 with col2:
