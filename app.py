@@ -44,6 +44,9 @@ def extract_info(text):
         "Skills": None,
         "Experience": None,
         "Position": None,
+        "AIDEAS": "Interview schedule","Interview feedback": None,
+        "CLIENT": "Interview schedule", "Interview feedback": None,
+        "Status ( Selected / HOLD /Rejected )" : None,
     }
 
     # Extract email
