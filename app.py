@@ -35,24 +35,20 @@ def extract_text_from_docx(docx_path):
     return text
 
 # Extract information
-def extract_info(text):
-    info = {
-        "Name": None,
-        "Email": None,
-        "Phone": None,
-        "Education": None,
-        "Skills": None,
-        "Experience": None,
-        "Position": None,
-        "AIDEAS": {
-            "Interview Schedule": None,
-            "Interview Feedback": None
-        },
-        "CLIENT": {
-            "Interview Schedule": None,
-            "Interview Feedback": None
-        },
-        "Status (Selected / HOLD / Rejected)": None,
+def extract_info():
+    data = {
+        "Name": [None, None],
+        "Email": [None, None],
+        "Phone": [None, None],
+        "Education": [None, None],
+        "Skills": [None, None],
+        "Experience": [None, None],
+        "Position": [None, None],
+        "AIDEAS Interview Schedule": [None, None],
+        "AIDEAS Interview Feedback": [None, None],
+        "CLIENT Interview Schedule": [None, None],
+        "CLIENT Interview Feedback": [None, None],
+        "Status (Selected / HOLD / Rejected)": [None, None],
     }
     
 
