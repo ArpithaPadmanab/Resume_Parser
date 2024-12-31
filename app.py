@@ -54,7 +54,7 @@ def extract_info(text):
         },
         "Status (Selected / HOLD / Rejected)": None,
     }
-    return info
+    
 
     # Extract email
     email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
