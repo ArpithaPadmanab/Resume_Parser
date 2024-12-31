@@ -44,10 +44,18 @@ def extract_info(text):
         "Skills": None,
         "Experience": None,
         "Position": None,
-        "AIDEAS": "Interview schedule","Interview feedback": None,
-        "CLIENT": "Interview schedule", "Interview feedback": None,
-        "Status ( Selected / HOLD /Rejected )" : None,
+        "AIDEAS": {
+            "Interview Schedule": None,
+            "Interview Feedback": None
+        },
+        "CLIENT": {
+            "Interview Schedule": None,
+            "Interview Feedback": None
+        },
+        "Status (Selected / HOLD / Rejected)": None,
     }
+    return info
+
 
     # Extract email
     email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
