@@ -35,8 +35,8 @@ def extract_text_from_docx(docx_path):
     return text
 
 # Extract information
-def extract_info():
-    data = {
+def extract_info(text):
+    info = {
         "Name": [None, None],
         "Email": [None, None],
         "Phone": [None, None],
