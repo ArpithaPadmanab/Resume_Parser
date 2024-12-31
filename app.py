@@ -56,7 +56,6 @@ def extract_info(text):
     }
     return info
 
-
     # Extract email
     email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
     email_match = re.search(email_pattern, text)
