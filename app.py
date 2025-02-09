@@ -99,15 +99,19 @@ def convert_df_to_excel(df):
 st.set_page_config(page_title="Resume Tracker", layout="wide")
 
 # UI Components
-col1, col2 = st.columns([1, 2])
+col1, col2 = st.columns([1, 2])  # Adjust the width ratio if needed
 
-# Add image
+# Add an image in the first column
 with col1:
-    st.image("logo.jpeg", use_container_width=True)  # ✅ Updated
+    st.image(
+        "logo.jpeg"
+    )
 
-# Add title
+# Add text in the second column
 with col2:
-    st.title("Resume Tracker")
+   
+   st.title("RESUME TRACKER")
+
 
 # File Uploader
 uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx"], accept_multiple_files=True)
