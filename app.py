@@ -1,14 +1,15 @@
-import io
 import os
+import io
 import re
-import pypandoc
 import pandas as pd
+import streamlit as st
 from docx import Document
 from PyPDF2 import PdfReader
-import streamlit as st
+from openpyxl import Workbook
 
-# Extract text from PDF file
+# Utility Functions
 def extract_text_from_pdf(pdf_path):
+    """Extract text from a PDF file."""
     text = ""
     try:
         reader = PdfReader(pdf_path)
@@ -18,45 +19,24 @@ def extract_text_from_pdf(pdf_path):
         st.error(f"Error reading PDF: {e}")
     return text
 
-# Extract text from DOCX file (including tables)
 def extract_text_from_docx(docx_path):
+    """Extract text from a DOCX file."""
     text = ""
     try:
         doc = Document(docx_path)
-        # Extract paragraphs
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
-        
-        # Extract table content
         for table in doc.tables:
             for row in table.rows:
                 for cell in row.cells:
                     text += cell.text + " "
-            text += "\n"  # Separate rows
+            text += "\n"
     except Exception as e:
         st.error(f"Error reading DOCX: {e}")
     return text
 
-# Convert DOC to PDF
-def convert_doc_to_pdf(input_path, output_path):
-    try:
-        pypandoc.convert_file(input_path, "pdf", outputfile=output_path)
-        return True
-    except Exception as e:
-        st.error(f"Error converting DOC to PDF: {e}")
-        return False
-
-# Extract text from DOC file
-def extract_text_from_doc(doc_path):
-    temp_pdf = "temp_output.pdf"
-    if convert_doc_to_pdf(doc_path, temp_pdf):
-        text = extract_text_from_pdf(temp_pdf)
-        os.remove(temp_pdf)  # Clean up
-        return text
-    return ""
-
-# Extract information using regex
 def extract_info(text):
+    """Extract relevant information from text."""
     info = {
         "Name": None,
         "Email": None,
@@ -72,75 +52,77 @@ def extract_info(text):
     if email_match:
         info["Email"] = email_match.group(0)
 
-    # Extract phone number
+    # Extract phone
     phone_pattern = r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'
     phone_match = re.search(phone_pattern, text)
     if phone_match:
         info["Phone"] = phone_match.group(0)
 
-    # Extract name (first line heuristic)
-    lines = text.split("\n")
-    if lines:
-        info["Name"] = lines[0].strip()
+    # Extract name (without spaCy)
+    name_pattern = r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"
+    name_match = re.search(name_pattern, text)
+    if name_match:
+        info["Name"] = name_match.group(0)
 
     # Extract education
-    education_pattern = r"(B\.Tech|B\.Sc|M\.Tech|M\.Sc|PhD|MBA)"
+    education_pattern = r"(B\.E|B\.Tech|B\.Sc|B\.Com|M\.Tech|M\.Sc|PhD|MBA|Bachelor|Master|Diploma)"
     education_match = re.search(education_pattern, text, re.IGNORECASE)
     if education_match:
         info["Education"] = education_match.group(0)
 
     # Extract skills
-    skills_keywords = ["Python", "Java", "SQL", "Machine Learning", "Data Science"]
+    skills_keywords = [
+        "C++", "C", ".NET", "Python", "Java", "SQL", "Machine Learning", "Data Science",
+        "Tableau", "PowerBI", "PLC", "DCS", "SCADA", "AutoCAD", "P2P", "O2C", "SCM", "MM",
+        "SAP", "Robo", "BiW", "SolidWorks", "Mechanical Design", "Electrical Design", "E Plan",
+        "LV", "MV", "LT", "MT", "EBASE", "800xA", "B.Com"
+    ]
     skills_found = [skill for skill in skills_keywords if skill.lower() in text.lower()]
     info["Skills"] = ", ".join(skills_found)
 
     # Extract experience
-    experience_pattern = r"(\d+ years? experience)"
+    experience_pattern = r"(\d+\s+(years?|months?)\s+experience)"
     experience_match = re.search(experience_pattern, text, re.IGNORECASE)
     if experience_match:
         info["Experience"] = experience_match.group(0)
 
     return info
 
+def convert_df_to_excel(df):
+    """Convert a DataFrame to an Excel file."""
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Resumes")
+    return output.getvalue()
+
 # Streamlit App
+st.set_page_config(page_title="Resume Tracker", layout="wide")
 
+# UI Components
+col1, col2 = st.columns([1, 2])
 
-col1, col2 = st.columns([1, 2])  # Adjust the width ratio if needed
-
-# Add an image in the first column
+# Add image
 with col1:
-    st.image(
-        "logo.jpeg"
-    )
+    st.image("logo.jpeg", use_container_width=True)  # ✅ Updated
 
-# Add text in the second column
+# Add title
 with col2:
-   
-   st.title("RESUME TRACKER")
+    st.title("Resume Tracker")
 
-
-uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx", "doc"], accept_multiple_files=True)
+# File Uploader
+uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx"], accept_multiple_files=True)
 
 if uploaded_files:
     data = []
     for uploaded_file in uploaded_files:
         text = ""
-
-        # Handle different file types
         if uploaded_file.name.endswith(".pdf"):
             text = extract_text_from_pdf(uploaded_file)
         elif uploaded_file.name.endswith(".docx"):
-            temp_path = f"temp_{uploaded_file.name}"
-            with open(temp_path, "wb") as f:
+            with open(f"temp_{uploaded_file.name}", "wb") as f:
                 f.write(uploaded_file.getbuffer())
-            text = extract_text_from_docx(temp_path)
-            os.remove(temp_path)
-        elif uploaded_file.name.endswith(".doc"):
-            temp_path = f"temp_{uploaded_file.name}"
-            with open(temp_path, "wb") as f:
-                f.write(uploaded_file.getbuffer())
-            text = extract_text_from_doc(temp_path)
-            os.remove(temp_path)
+            text = extract_text_from_docx(f"temp_{uploaded_file.name}")
+            os.remove(f"temp_{uploaded_file.name}")
 
         if text:
             info = extract_info(text)
@@ -149,17 +131,13 @@ if uploaded_files:
         else:
             st.warning(f"Could not process file: {uploaded_file.name}")
 
+    # Display DataFrame
     df = pd.DataFrame(data)
     st.dataframe(df)
 
-    def convert_df(df):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Resumes")
-        return output.getvalue()
-
+    # Download Button
     if not df.empty:
-        excel_data = convert_df(df)
+        excel_data = convert_df_to_excel(df)
         st.download_button(
             "Download Excel",
             data=excel_data,
