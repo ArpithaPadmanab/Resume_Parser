@@ -7,8 +7,9 @@ from PyPDF2 import PdfReader
 import streamlit as st
 from openpyxl import Workbook
 
-# Extract text from PDF
+# Utility Functions
 def extract_text_from_pdf(pdf_path):
+    """Extract text from a PDF file."""
     text = ""
     try:
         reader = PdfReader(pdf_path)
@@ -18,8 +19,8 @@ def extract_text_from_pdf(pdf_path):
         st.error(f"Error reading PDF: {e}")
     return text
 
-# Extract text from DOCX
 def extract_text_from_docx(docx_path):
+    """Extract text from a DOCX file."""
     text = ""
     try:
         doc = Document(docx_path)
@@ -34,8 +35,8 @@ def extract_text_from_docx(docx_path):
         st.error(f"Error reading DOCX: {e}")
     return text
 
-# Extract information
 def extract_info(text):
+    """Extract relevant information from text."""
     info = {
         "Name": None,
         "Email": None,
@@ -44,13 +45,7 @@ def extract_info(text):
         "Skills": None,
         "Experience": None,
         "Position": None,
-        "AIDEAS Interview Schedule": None,
-        "AIDEAS Interview Feedback": None,
-        "CLIENT Interview Schedule": None,
-        "CLIENT Interview Feedback": None,
-        "Status (Selected / HOLD / Rejected)": None,
     }
-    
 
     # Extract email
     email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
@@ -65,9 +60,10 @@ def extract_info(text):
         info["Phone"] = phone_match.group(0)
 
     # Extract name
-    lines = text.split("\n")
-    if lines:
-        info["Name"] = lines[0].strip()
+    name_pattern = r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"
+    name_match = re.search(name_pattern, text)
+    if name_match:
+        info["Name"] = name_match.group(0)
 
     # Extract education
     education_pattern = r"(B\.E|B\.Tech|B\.Sc|B\.Com|M\.Tech|M\.Sc|PhD|MBA|Bachelor|Master|Diploma)"
@@ -95,18 +91,18 @@ def extract_info(text):
     position_keywords = {
         "Finance": ["B.Com"],
         "Purchase Engineer": ["SCM", "SAP", "MM"],
-        "Order Mangement Associate": ["B.Com", "SAP"],
+        "Order Management Associate": ["B.Com", "SAP"],
         "Data Analytics": ["Machine Learning", "Data Science", "SQL", "Tableau", "PowerBI"],
         "Software Engineer": ["Python", "Java", "C++", ".NET"],
         "800xA": ["800xA"],
         "SAP Consultant": ["SAP", "LV", "MV", "LT", "MT"],
         "Electrical Engineer": ["Electrical Design", "E Plan", "EBASE"],
-        "Mechanical Design":  ["SolidWorks", "Mechanical Design"],
-        "Automation Engineer": ["PLC","DCS", "SCADA"],
+        "Mechanical Design": ["SolidWorks", "Mechanical Design"],
+        "Automation Engineer": ["PLC", "DCS", "SCADA"],
         "AutoCAD": ["AutoCAD"],
         "Sales Support Engineer": ["P2P", "O2C"],
         "Robotics Programmer": ["Robo"],
-        "BiW": ["BiW"],    
+        "BiW": ["BiW"],
     }
 
     for position, keywords in position_keywords.items():
@@ -116,19 +112,28 @@ def extract_info(text):
 
     return info
 
+def convert_df_to_excel(df):
+    """Convert a DataFrame to an Excel file."""
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, index=False, sheet_name="Resumes")
+    return output.getvalue()
+
 # Streamlit App
 st.set_page_config(page_title="Resume Tracker", layout="wide")
 
+# UI Components
 col1, col2 = st.columns([1, 2])
 
 # Add image
 with col1:
-    st.image("logo.jpeg")
+    st.image("logo.jpeg", caption="Company Logo", use_column_width=True)
 
 # Add title
 with col2:
     st.title("Resume Tracker")
 
+# File Uploader
 uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx"], accept_multiple_files=True)
 
 if uploaded_files:
@@ -150,15 +155,11 @@ if uploaded_files:
         else:
             st.warning(f"Could not process file: {uploaded_file.name}")
 
+    # Display DataFrame
     df = pd.DataFrame(data)
     st.dataframe(df)
 
-    def convert_df_to_excel(df):
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine="openpyxl") as writer:
-            df.to_excel(writer, index=False, sheet_name="Resumes")
-        return output.getvalue()
-
+    # Download Button
     if not df.empty:
         excel_data = convert_df_to_excel(df)
         st.download_button(
