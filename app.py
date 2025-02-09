@@ -127,7 +127,7 @@ col1, col2 = st.columns([1, 2])
 
 # Add image
 with col1:
-    st.image("logo.jpeg", caption="Company Logo", use_container_width=True)  # ✅ Updated
+    st.image("logo.jpeg", use_container_width=True)  # ✅ Updated
 
 # Add title
 with col2:
