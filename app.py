@@ -1,33 +1,29 @@
 import os
 import io
 import re
-import spacy
 import pandas as pd
 import streamlit as st
 from docx import Document
 from PyPDF2 import PdfReader
 from openpyxl import Workbook
 
-# Load spaCy NLP model for better name extraction
-nlp = spacy.load("en_core_web_sm")
-
 # Utility Functions
-def extract_text_from_pdf(pdf_file):
+def extract_text_from_pdf(pdf_path):
     """Extract text from a PDF file."""
     text = ""
     try:
-        reader = PdfReader(pdf_file)
+        reader = PdfReader(pdf_path)
         for page in reader.pages:
             text += page.extract_text() or ""
     except Exception as e:
         st.error(f"Error reading PDF: {e}")
-    return text.strip()
+    return text
 
-def extract_text_from_docx(docx_file):
+def extract_text_from_docx(docx_path):
     """Extract text from a DOCX file."""
     text = ""
     try:
-        doc = Document(io.BytesIO(docx_file.getvalue()))
+        doc = Document(docx_path)
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
         for table in doc.tables:
@@ -37,20 +33,12 @@ def extract_text_from_docx(docx_file):
             text += "\n"
     except Exception as e:
         st.error(f"Error reading DOCX: {e}")
-    return text.strip()
-
-def extract_name(text):
-    """Extract name using NLP."""
-    doc = nlp(text)
-    for ent in doc.ents:
-        if ent.label_ == "PERSON":
-            return ent.text
-    return None
+    return text
 
 def extract_info(text):
-    """Extract relevant information from resume text."""
+    """Extract relevant information from text."""
     info = {
-        "Name": extract_name(text),
+        "Name": None,
         "Email": None,
         "Phone": None,
         "Education": None,
@@ -65,17 +53,23 @@ def extract_info(text):
     if email_match:
         info["Email"] = email_match.group(0)
 
-    # Extract phone number
+    # Extract phone
     phone_pattern = r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b'
     phone_match = re.search(phone_pattern, text)
     if phone_match:
         info["Phone"] = phone_match.group(0)
 
-    # Extract education (multiple matches)
+    # Extract name (without spaCy)
+    name_pattern = r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"
+    name_match = re.search(name_pattern, text)
+    if name_match:
+        info["Name"] = name_match.group(0)
+
+    # Extract education
     education_pattern = r"(B\.E|B\.Tech|B\.Sc|B\.Com|M\.Tech|M\.Sc|PhD|MBA|Bachelor|Master|Diploma)"
-    education_matches = re.findall(education_pattern, text, re.IGNORECASE)
-    if education_matches:
-        info["Education"] = ", ".join(set(education_matches))
+    education_match = re.search(education_pattern, text, re.IGNORECASE)
+    if education_match:
+        info["Education"] = education_match.group(0)
 
     # Extract skills
     skills_keywords = [
@@ -85,13 +79,13 @@ def extract_info(text):
         "LV", "MV", "LT", "MT", "EBASE", "800xA", "B.Com"
     ]
     skills_found = [skill for skill in skills_keywords if skill.lower() in text.lower()]
-    info["Skills"] = ", ".join(skills_found) if skills_found else None
+    info["Skills"] = ", ".join(skills_found)
 
-    # Extract experience (multiple formats)
-    experience_pattern = r"(\d+)\s+(years?|months?)\s+experience"
-    experience_matches = re.findall(experience_pattern, text, re.IGNORECASE)
-    if experience_matches:
-        info["Experience"] = ", ".join([f"{match[0]} {match[1]}" for match in experience_matches])
+    # Extract experience
+    experience_pattern = r"(\d+\s+(years?|months?)\s+experience)"
+    experience_match = re.search(experience_pattern, text, re.IGNORECASE)
+    if experience_match:
+        info["Experience"] = experience_match.group(0)
 
     # Assign position
     position_keywords = {
@@ -131,9 +125,9 @@ st.set_page_config(page_title="Resume Tracker", layout="wide")
 # UI Components
 col1, col2 = st.columns([1, 2])
 
-# Add image with corrected parameter
+# Add image
 with col1:
-    st.image("logo.jpeg", caption="Company Logo", use_container_width=True)
+    st.image("logo.jpeg", caption="Company Logo", use_container_width=True)  # ✅ Updated
 
 # Add title
 with col2:
@@ -149,7 +143,10 @@ if uploaded_files:
         if uploaded_file.name.endswith(".pdf"):
             text = extract_text_from_pdf(uploaded_file)
         elif uploaded_file.name.endswith(".docx"):
-            text = extract_text_from_docx(uploaded_file)
+            with open(f"temp_{uploaded_file.name}", "wb") as f:
+                f.write(uploaded_file.getbuffer())
+            text = extract_text_from_docx(f"temp_{uploaded_file.name}")
+            os.remove(f"temp_{uploaded_file.name}")
 
         if text:
             info = extract_info(text)
