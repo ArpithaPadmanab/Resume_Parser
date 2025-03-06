@@ -2,10 +2,16 @@ import os
 import io
 import re
 import pandas as pd
+import spacy
 from docx import Document
 from PyPDF2 import PdfReader
 import streamlit as st
 from openpyxl import Workbook
+from transformers import pipeline
+
+# Load NLP model
+nlp = spacy.load("en_core_web_sm")
+skill_extractor = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
 
 # Utility Functions
 def extract_text_from_pdf(pdf_path):
@@ -26,17 +32,12 @@ def extract_text_from_docx(docx_path):
         doc = Document(docx_path)
         for paragraph in doc.paragraphs:
             text += paragraph.text + "\n"
-        for table in doc.tables:
-            for row in table.rows:
-                for cell in row.cells:
-                    text += cell.text + " "
-            text += "\n"
     except Exception as e:
         st.error(f"Error reading DOCX: {e}")
     return text
 
 def extract_info(text):
-    """Extract relevant information from text."""
+    """Extract relevant information using NLP models."""
     info = {
         "Name": None,
         "Email": None,
@@ -46,6 +47,14 @@ def extract_info(text):
         "Experience": None,
         "Position": None,
     }
+
+    doc = nlp(text)
+    
+    # Extract name (Using Named Entity Recognition)
+    for ent in doc.ents:
+        if ent.label_ == "PERSON":
+            info["Name"] = ent.text
+            break
 
     # Extract email
     email_pattern = r'[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+'
@@ -59,57 +68,36 @@ def extract_info(text):
     if phone_match:
         info["Phone"] = phone_match.group(0)
 
-    # Extract name
-    name_pattern = r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"
-    name_match = re.search(name_pattern, text)
-    if name_match:
-        info["Name"] = name_match.group(0)
-
     # Extract education
-    education_pattern = r"(B\.E|B\.Tech|B\.Sc|B\.Com|M\.Tech|M\.Sc|PhD|MBA|Bachelor|Master|Diploma)"
+    education_pattern = r"(B\.E|B\.Tech|B\.Sc|M\.Tech|M\.Sc|PhD|MBA|Bachelor|Master|Diploma)"
     education_match = re.search(education_pattern, text, re.IGNORECASE)
     if education_match:
         info["Education"] = education_match.group(0)
-
-    # Extract skills
-    skills_keywords = [
-        "C++", "C", ".NET", "Python", "Java", "SQL", "Machine Learning", "Data Science",
-        "Tableau", "PowerBI", "PLC", "DCS", "SCADA", "AutoCAD", "P2P", "O2C", "SCM", "MM",
-        "SAP", "Robo", "BiW", "SolidWorks", "Mechanical Design", "Electrical Design", "E Plan",
-        "LV", "MV", "LT", "MT", "EBASE", "800xA", "B.Com"
-    ]
-    skills_found = [skill for skill in skills_keywords if skill.lower() in text.lower()]
-    info["Skills"] = ", ".join(skills_found)
-
+    
+    # Extract skills using NLP Model
+    skills_list = ["Python", "Java", "SQL", "Machine Learning", "Data Science", "Tableau", "PowerBI", "Deep Learning", "Cloud Computing", "NLP"]
+    skills = skill_extractor(text, skills_list, multi_label=True)
+    info["Skills"] = ", ".join([label for label, score in zip(skills["labels"], skills["scores"]) if score > 0.5])
+    
     # Extract experience
     experience_pattern = r"(\d+\s+(years?|months?)\s+experience)"
     experience_match = re.search(experience_pattern, text, re.IGNORECASE)
     if experience_match:
         info["Experience"] = experience_match.group(0)
-
+    
     # Assign position
     position_keywords = {
-        "Finance": ["B.Com"],
-        "Purchase Engineer": ["SCM", "SAP", "MM"],
-        "Order Management Associate": ["B.Com", "SAP"],
-        "Data Analytics": ["Machine Learning", "Data Science", "SQL", "Tableau", "PowerBI"],
-        "Software Engineer": ["Python", "Java", "C++", ".NET"],
-        "800xA": ["800xA"],
-        "SAP Consultant": ["SAP", "LV", "MV", "LT", "MT"],
-        "Electrical Engineer": ["Electrical Design", "E Plan", "EBASE"],
-        "Mechanical Design": ["SolidWorks", "Mechanical Design"],
-        "Automation Engineer": ["PLC", "DCS", "SCADA"],
-        "AutoCAD": ["AutoCAD"],
-        "Sales Support Engineer": ["P2P", "O2C"],
-        "Robotics Programmer": ["Robo"],
-        "BiW": ["BiW"],
+        "Data Scientist": ["Machine Learning", "Data Science", "Python", "SQL"],
+        "Software Engineer": ["Python", "Java", "C++", "Cloud Computing"],
+        "Data Analyst": ["SQL", "Tableau", "PowerBI"],
+        "AI Engineer": ["Deep Learning", "NLP"],
     }
-
+    
     for position, keywords in position_keywords.items():
-        if any(keyword.lower() in text.lower() for keyword in keywords):
+        if any(keyword in info["Skills"] for keyword in keywords):
             info["Position"] = position
             break
-
+    
     return info
 
 def convert_df_to_excel(df):
@@ -122,20 +110,7 @@ def convert_df_to_excel(df):
 # Streamlit App
 st.set_page_config(page_title="Resume Tracker", layout="wide")
 
-# UI Components
-col1, col2 = st.columns([1, 2])  # Adjust the width ratio if needed
-
-# Add an image in the first column
-with col1:
-    st.image(
-        "logo.jpeg"
-    )
-
-# Add text in the second column
-with col2:
-   
-   st.title("RESUME TRACKER")
-
+st.title("RESUME TRACKER")
 
 # File Uploader
 uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx"], accept_multiple_files=True)
@@ -151,7 +126,7 @@ if uploaded_files:
                 f.write(uploaded_file.getbuffer())
             text = extract_text_from_docx(f"temp_{uploaded_file.name}")
             os.remove(f"temp_{uploaded_file.name}")
-
+        
         if text:
             info = extract_info(text)
             info["Filename"] = uploaded_file.name
