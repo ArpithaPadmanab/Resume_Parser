@@ -7,10 +7,14 @@ from PyPDF2 import PdfReader
 import streamlit as st
 from openpyxl import Workbook
 from transformers import pipeline
+import torch
+
+# Force transformers to use CPU only
+device = -1  # -1 means CPU
 
 # Load NLP models
-ner_pipeline = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english")
-skill_extractor = pipeline("zero-shot-classification", model="facebook/bart-large-mnli")
+ner_pipeline = pipeline("ner", model="dbmdz/bert-large-cased-finetuned-conll03-english", device=device)
+skill_extractor = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", device=device)
 
 # Utility Functions
 def extract_text_from_pdf(pdf_path):
@@ -147,7 +151,7 @@ if uploaded_files:
         else:
             st.warning(f"Could not process file: {uploaded_file.name}")
 
-    # Display s
+    # Display DataFrame
     df = pd.DataFrame(data)
     st.dataframe(df)
 
