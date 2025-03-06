@@ -6,6 +6,5 @@ reportlab
 PyPDF2
 openpyxl
 python-dotenv
-spacy
 transformers
 docx
