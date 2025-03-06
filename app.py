@@ -2,9 +2,9 @@ import os
 import io
 import re
 import pandas as pd
-import streamlit as st
 from docx import Document
 from PyPDF2 import PdfReader
+import streamlit as st
 from openpyxl import Workbook
 
 # Utility Functions
@@ -44,6 +44,7 @@ def extract_info(text):
         "Education": None,
         "Skills": None,
         "Experience": None,
+        "Position": None,
     }
 
     # Extract email
@@ -58,7 +59,7 @@ def extract_info(text):
     if phone_match:
         info["Phone"] = phone_match.group(0)
 
-    # Extract name (without spaCy)
+    # Extract name
     name_pattern = r"\b[A-Z][a-z]+ [A-Z][a-z]+\b"
     name_match = re.search(name_pattern, text)
     if name_match:
@@ -86,6 +87,29 @@ def extract_info(text):
     if experience_match:
         info["Experience"] = experience_match.group(0)
 
+    # Assign position
+    position_keywords = {
+        "Finance": ["B.Com"],
+        "Purchase Engineer": ["SCM", "SAP", "MM"],
+        "Order Management Associate": ["B.Com", "SAP"],
+        "Data Analytics": ["Machine Learning", "Data Science", "SQL", "Tableau", "PowerBI"],
+        "Software Engineer": ["Python", "Java", "C++", ".NET"],
+        "800xA": ["800xA"],
+        "SAP Consultant": ["SAP", "LV", "MV", "LT", "MT"],
+        "Electrical Engineer": ["Electrical Design", "E Plan", "EBASE"],
+        "Mechanical Design": ["SolidWorks", "Mechanical Design"],
+        "Automation Engineer": ["PLC", "DCS", "SCADA"],
+        "AutoCAD": ["AutoCAD"],
+        "Sales Support Engineer": ["P2P", "O2C"],
+        "Robotics Programmer": ["Robo"],
+        "BiW": ["BiW"],
+    }
+
+    for position, keywords in position_keywords.items():
+        if any(keyword.lower() in text.lower() for keyword in keywords):
+            info["Position"] = position
+            break
+
     return info
 
 def convert_df_to_excel(df):
@@ -99,19 +123,15 @@ def convert_df_to_excel(df):
 st.set_page_config(page_title="Resume Tracker", layout="wide")
 
 # UI Components
-col1, col2 = st.columns([1, 2])  # Adjust the width ratio if needed
+col1, col2 = st.columns([1, 2])
 
-# Add an image in the first column
+# Add image
 with col1:
-    st.image(
-        "logo.jpeg"
-    )
+    st.image("logo.jpeg", caption="Company Logo", use_column_width=True)
 
-# Add text in the second column
+# Add title
 with col2:
-   
-   st.title("RESUME TRACKER")
-
+    st.title("Resume Tracker")
 
 # File Uploader
 uploaded_files = st.file_uploader("Upload resumes", type=["pdf", "docx"], accept_multiple_files=True)
