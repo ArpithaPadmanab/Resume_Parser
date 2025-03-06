@@ -1,10 +1,10 @@
 streamlit
 pandas
-python-docx
-pypandoc
-reportlab
-PyPDF2
 openpyxl
-python-dotenv
+numpy
+torch
 transformers
+sentencepiece
 docx
+python-docx
+PyPDF2
